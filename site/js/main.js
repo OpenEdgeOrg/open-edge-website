@@ -132,21 +132,70 @@
   // recompute once fonts/layout settle (scrollHeight can shift)
   window.addEventListener("load", function () { computeStates(); render(); });
 
-  // ================= Act item in-depth panes =================
+  // ================= Act item in-depth panes + permalinks =================
   // Each act lists its points on the left; clicking a point swaps the
-  // long-form explanation shown in the sticky pane on the right.
+  // long-form explanation shown in the sticky pane on the right. Every point
+  // gets a stable id derived from its section (e.g. "clearing-02"), so each
+  // in-depth text is directly linkable: opening the page at #clearing-02
+  // reveals that pane and scrolls to it, and clicking a point reflects its id
+  // in the address bar for copy/paste.
+  var deepLinks = {};
+  var prefersReduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
   Array.prototype.forEach.call(document.querySelectorAll(".itemsplit"), function (split) {
     var items = Array.prototype.slice.call(split.querySelectorAll(".items > .item"));
     var panes = Array.prototype.slice.call(split.querySelectorAll(".detail__pane"));
     if (!items.length || items.length !== panes.length) { return; }
+    var aside = split.querySelector(".detail");
+    var section = split.closest("section");
+    var prefix = section && section.id ? section.id : null;
+
     function activate(idx) {
       items.forEach(function (el, i) { el.classList.toggle("is-active", i === idx); });
       panes.forEach(function (el, i) { el.classList.toggle("is-active", i === idx); });
     }
+
     items.forEach(function (el, i) {
-      el.addEventListener("click", function () { activate(i); });
+      var id = prefix ? prefix + "-0" + (i + 1) : null;
+      if (id) { el.id = id; }
+      el.addEventListener("click", function () {
+        activate(i);
+        if (id && window.history && history.replaceState) {
+          history.replaceState(null, "", "#" + id);
+        }
+      });
+      if (id) {
+        deepLinks[id] = function (doScroll, smooth) {
+          // Force-reveal in case scroll-reveal hasn't fired for this block yet.
+          items.forEach(function (s) { s.classList.add("is-in"); });
+          if (aside) { aside.classList.add("is-in"); }
+          activate(i);
+          if (doScroll) {
+            // Desktop: scroll to the point (its pane is sticky alongside).
+            // Narrow screens: the pane renders inline below the list, so land
+            // directly on the in-depth text itself.
+            var narrow = window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+            var target = (narrow && panes[i]) ? panes[i] : el;
+            target.scrollIntoView({ behavior: (smooth && !prefersReduce) ? "smooth" : "auto", block: "start" });
+          }
+        };
+      }
     });
   });
+
+  function applyDeepLink(doScroll, smooth) {
+    var id = (window.location.hash || "").replace(/^#/, "");
+    if (id && deepLinks[id]) { deepLinks[id](doScroll, smooth); return true; }
+    return false;
+  }
+
+  // On first load, reveal the linked pane immediately, but defer the scroll to
+  // the load event: images and the gauge below still shift layout, so scrolling
+  // too early lands on a stale position. Later hash changes scroll smoothly.
+  if (applyDeepLink(false, false)) {
+    window.addEventListener("load", function () { applyDeepLink(true, false); });
+  }
+  window.addEventListener("hashchange", function () { applyDeepLink(true, true); });
 
   // ================= Scroll reveal =================
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;

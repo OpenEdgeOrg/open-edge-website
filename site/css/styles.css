@@ -231,7 +231,7 @@ strong { font-weight: 600; }
 .itemsplit { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
 .itemsplit .item__body h3 { font-size: 1.3rem; }
 .itemsplit .item__body p { font-size: .98rem; }
-.itemsplit .item { cursor: pointer; }
+.itemsplit .item { cursor: pointer; scroll-margin-top: 84px; }
 .item__more { display: inline-block; margin-top: 12px; font-family: var(--mono); font-size: .66rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); transition: color .2s var(--ease); }
 .item__more::after { content: "→"; margin-left: 8px; display: inline-block; transition: transform .2s var(--ease); }
 .itemsplit .item:hover .item__more::after { transform: translateX(5px); }
@@ -248,7 +248,11 @@ strong { font-weight: 600; }
 .detail__prose p + p { margin-top: .9em; }
 @media (max-width: 900px) {
   .itemsplit { grid-template-columns: 1fr; }
-  .detail { display: none; }
+  /* Sticky right-hand pane can't work in a single column; hide it until a
+     point is opened (tap or deep link), then show it inline below the list. */
+  .detail { display: none; position: static; top: auto; margin-top: 24px; }
+  .detail:has(.detail__pane.is-active) { display: block; }
+  .detail__pane { scroll-margin-top: 84px; }
 }
 @media (prefers-reduced-motion: reduce) { .detail__pane.is-active { animation: none; } }
 
